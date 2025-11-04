@@ -14,7 +14,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
-@Repository
+@org.springframework.stereotype.Repository
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+        name = "repository.type",
+        havingValue = "memory"
+)
 public class InMemoryOrderRepository implements OrderRepository {
 
     private final ConcurrentMap<UUID, Order> store = new ConcurrentHashMap<>();

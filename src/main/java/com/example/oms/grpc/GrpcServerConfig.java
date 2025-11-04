@@ -1,6 +1,7 @@
 package com.example.oms.grpc;
 
 import io.grpc.Server;
+import io.grpc.protobuf.services.ProtoReflectionService;
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
@@ -24,9 +25,10 @@ public class GrpcServerConfig {
                             @Value("${grpc.server.port:9090}") int port) throws IOException {
         this.server = NettyServerBuilder.forPort(port)
                 .addService(grpcOrderService)
+                .addService(ProtoReflectionService.newInstance())  // Enable reflection for grpcurl
                 .build()
                 .start();
-        log.info("gRPC server started on port {}", port);
+        log.info("gRPC server started on port {} with reflection enabled", port);
     }
 
     @PreDestroy

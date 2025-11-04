@@ -34,7 +34,6 @@ public class OrderController {
                 .toList();
         UUID customerId = UUID.fromString(request.getCustomerId());
         Order created = orderService.createOrder(customerId, items);
-        // todo
         return ResponseEntity.created(URI.create("/api/orders/" + created.getId()))
                 .body(OrderResponse.from(created));
     }
