@@ -14,6 +14,8 @@ mvn spring-boot:run
 
 Server starts at http://localhost:8080
 
+gRPC server starts at localhost:9090
+
 ## REST API
 
 - Create order
@@ -54,4 +56,36 @@ A scheduler runs every 5 minutes to move PENDING orders to PROCESSING.
 ## Notes
 - In-memory storage (no external DB).
 - Validation and error responses included.
+
+## gRPC API
+
+Proto file: `src/main/proto/order.proto`
+
+- Create order
+```bash
+grpcurl -plaintext -d '{
+  "customer_name":"Alice",
+  "items":[{"product_id":"P1","quantity":2}]
+}' localhost:9090 com.example.oms.grpc.OrderService/CreateOrder
+```
+
+- Get order
+```bash
+grpcurl -plaintext -d '{"id":"<ORDER_ID>"}' localhost:9090 com.example.oms.grpc.OrderService/GetOrder
+```
+
+- List orders (optional status filter)
+```bash
+grpcurl -plaintext -d '{"status":"PROCESSING"}' localhost:9090 com.example.oms.grpc.OrderService/ListOrders
+```
+
+- Update status
+```bash
+grpcurl -plaintext -d '{"id":"<ORDER_ID>","status":"SHIPPED"}' localhost:9090 com.example.oms.grpc.OrderService/UpdateOrderStatus
+```
+
+- Cancel order (only when PENDING)
+```bash
+grpcurl -plaintext -d '{"id":"<ORDER_ID>"}' localhost:9090 com.example.oms.grpc.OrderService/CancelOrder
+```
 

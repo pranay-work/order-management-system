@@ -9,3 +9,7 @@ logging:
   level:
     root: INFO
 
+grpc:
+  server:
+    port: 9090
+
