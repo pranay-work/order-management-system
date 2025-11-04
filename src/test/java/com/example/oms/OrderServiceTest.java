@@ -24,21 +24,25 @@ public class OrderServiceTest {
 
     @Test
     void createAndGetOrder() {
-        Order created = orderService.createOrder("Alice", List.of(new OrderItem("P1", 2)));
+        UUID customerId = UUID.randomUUID();
+        Order created = orderService.createOrder(customerId, List.of(new OrderItem("P1", 2)));
         Order fetched = orderService.getOrder(created.getId());
         assertEquals(created.getId(), fetched.getId());
+        assertEquals(customerId, fetched.getCustomerId());
         assertEquals(OrderStatus.PENDING, fetched.getStatus());
     }
 
     @Test
     void cancelOnlyPending() {
-        Order created = orderService.createOrder("Bob", List.of(new OrderItem("P2", 1)));
+        UUID customerId1 = UUID.randomUUID();
+        Order created = orderService.createOrder(customerId1, List.of(new OrderItem("P2", 1)));
         // OK: cancel pending
         Order cancelled = orderService.cancelOrder(created.getId());
         assertEquals(OrderStatus.CANCELLED, cancelled.getStatus());
 
         // Fail: cannot cancel non-pending
-        Order created2 = orderService.createOrder("Carl", List.of(new OrderItem("P3", 1)));
+        UUID customerId2 = UUID.randomUUID();
+        Order created2 = orderService.createOrder(customerId2, List.of(new OrderItem("P3", 1)));
         orderService.updateOrderStatus(created2.getId(), OrderStatus.PROCESSING);
         assertThrows(OrderService.InvalidOrderOperationException.class,
                 () -> orderService.cancelOrder(created2.getId()));
@@ -46,7 +50,8 @@ public class OrderServiceTest {
 
     @Test
     void schedulerMovesPendingToProcessing() {
-        Order created = orderService.createOrder("Dana", List.of(new OrderItem("P4", 3)));
+        UUID customerId = UUID.randomUUID();
+        Order created = orderService.createOrder(customerId, List.of(new OrderItem("P4", 3)));
         int updated = orderService.processPendingOrders();
         assertEquals(1, updated);
         Order fetched = orderService.getOrder(created.getId());
@@ -55,7 +60,8 @@ public class OrderServiceTest {
 
     @Test
     void updateStatus() {
-        Order created = orderService.createOrder("Eve", List.of(new OrderItem("P5", 5)));
+        UUID customerId = UUID.randomUUID();
+        Order created = orderService.createOrder(customerId, List.of(new OrderItem("P5", 5)));
         Order updated = orderService.updateOrderStatus(created.getId(), OrderStatus.SHIPPED);
         assertEquals(OrderStatus.SHIPPED, updated.getStatus());
     }

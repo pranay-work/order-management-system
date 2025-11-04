@@ -7,18 +7,18 @@ import java.util.List;
 
 public class CreateOrderRequest {
     @NotBlank
-    private String customerName;
+    private String customerId;
 
     @NotEmpty
     @Valid
     private List<OrderItemRequest> items;
 
-    public String getCustomerName() {
-        return customerName;
+    public String getCustomerId() {
+        return customerId;
     }
 
-    public void setCustomerName(String customerName) {
-        this.customerName = customerName;
+    public void setCustomerId(String customerId) {
+        this.customerId = customerId;
     }
 
     public List<OrderItemRequest> getItems() {

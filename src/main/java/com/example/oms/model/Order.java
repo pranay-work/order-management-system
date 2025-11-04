@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public class Order {
     private UUID id;
-    private String customerName;
+    private UUID customerId;
     private Instant createdAt;
     private OrderStatus status;
     private List<OrderItem> items;
@@ -16,9 +16,9 @@ public class Order {
     public Order() {
     }
 
-    public Order(UUID id, String customerName, Instant createdAt, OrderStatus status, List<OrderItem> items) {
+    public Order(UUID id, UUID customerId, Instant createdAt, OrderStatus status, List<OrderItem> items) {
         this.id = id;
-        this.customerName = customerName;
+        this.customerId = customerId;
         this.createdAt = createdAt;
         this.status = status;
         this.items = new ArrayList<>(items);
@@ -32,12 +32,12 @@ public class Order {
         this.id = id;
     }
 
-    public String getCustomerName() {
-        return customerName;
+    public UUID getCustomerId() {
+        return customerId;
     }
 
-    public void setCustomerName(String customerName) {
-        this.customerName = customerName;
+    public void setCustomerId(UUID customerId) {
+        this.customerId = customerId;
     }
 
     public Instant getCreatedAt() {

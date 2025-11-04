@@ -28,9 +28,12 @@ public class GrpcOrderService extends OrderServiceGrpc.OrderServiceImplBase {
             List<OrderItem> items = request.getItemsList().stream()
                     .map(i -> new OrderItem(i.getProductId(), i.getQuantity()))
                     .toList();
-            var created = orderService.createOrder(request.getCustomerName(), items);
-            responseObserver.onNext(toProto(created.getId().toString(), created.getCustomerName(), created.getCreatedAt(), created.getStatus(), created.getItems()));
+            UUID customerId = parseUuid(request.getCustomerId());
+            var created = orderService.createOrder(customerId, items);
+            responseObserver.onNext(toProto(created.getId().toString(), created.getCustomerId().toString(), created.getCreatedAt(), created.getStatus(), created.getItems()));
             responseObserver.onCompleted();
+        } catch (IllegalArgumentException e) {
+            responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("Invalid customer UUID").asRuntimeException());
         } catch (Exception e) {
             responseObserver.onError(Status.INTERNAL.withDescription("Failed to create order").withCause(e).asRuntimeException());
         }
@@ -41,7 +44,7 @@ public class GrpcOrderService extends OrderServiceGrpc.OrderServiceImplBase {
         try {
             UUID id = parseUuid(request.getId());
             var order = orderService.getOrder(id);
-            responseObserver.onNext(toProto(order.getId().toString(), order.getCustomerName(), order.getCreatedAt(), order.getStatus(), order.getItems()));
+            responseObserver.onNext(toProto(order.getId().toString(), order.getCustomerId().toString(), order.getCreatedAt(), order.getStatus(), order.getItems()));
             responseObserver.onCompleted();
         } catch (IllegalArgumentException e) {
             responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("Invalid UUID").asRuntimeException());
@@ -61,7 +64,7 @@ public class GrpcOrderService extends OrderServiceGrpc.OrderServiceImplBase {
             var orders = orderService.listOrders(status);
             ListOrdersResponse resp = ListOrdersResponse.newBuilder()
                     .addAllOrders(orders.stream()
-                            .map(o -> toProto(o.getId().toString(), o.getCustomerName(), o.getCreatedAt(), o.getStatus(), o.getItems()))
+                            .map(o -> toProto(o.getId().toString(), o.getCustomerId().toString(), o.getCreatedAt(), o.getStatus(), o.getItems()))
                             .toList())
                     .build();
             responseObserver.onNext(resp);
@@ -76,7 +79,7 @@ public class GrpcOrderService extends OrderServiceGrpc.OrderServiceImplBase {
         try {
             UUID id = parseUuid(request.getId());
             var updated = orderService.updateOrderStatus(id, fromProtoStatus(request.getStatus()));
-            responseObserver.onNext(toProto(updated.getId().toString(), updated.getCustomerName(), updated.getCreatedAt(), updated.getStatus(), updated.getItems()));
+            responseObserver.onNext(toProto(updated.getId().toString(), updated.getCustomerId().toString(), updated.getCreatedAt(), updated.getStatus(), updated.getItems()));
             responseObserver.onCompleted();
         } catch (IllegalArgumentException e) {
             responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("Invalid UUID").asRuntimeException());
@@ -94,7 +97,7 @@ public class GrpcOrderService extends OrderServiceGrpc.OrderServiceImplBase {
         try {
             UUID id = parseUuid(request.getId());
             var cancelled = orderService.cancelOrder(id);
-            responseObserver.onNext(toProto(cancelled.getId().toString(), cancelled.getCustomerName(), cancelled.getCreatedAt(), cancelled.getStatus(), cancelled.getItems()));
+            responseObserver.onNext(toProto(cancelled.getId().toString(), cancelled.getCustomerId().toString(), cancelled.getCreatedAt(), cancelled.getStatus(), cancelled.getItems()));
             responseObserver.onCompleted();
         } catch (IllegalArgumentException e) {
             responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("Invalid UUID").asRuntimeException());
@@ -111,10 +114,10 @@ public class GrpcOrderService extends OrderServiceGrpc.OrderServiceImplBase {
         return UUID.fromString(id);
     }
 
-    private static Order toProto(String id, String customerName, Instant createdAt, OrderStatus status, List<OrderItem> items) {
+    private static Order toProto(String id, String customerId, Instant createdAt, OrderStatus status, List<OrderItem> items) {
         return Order.newBuilder()
                 .setId(id)
-                .setCustomerName(customerName)
+                .setCustomerId(customerId)
                 .setCreatedAt(Timestamp.newBuilder().setSeconds(createdAt.getEpochSecond()).setNanos(createdAt.getNano()).build())
                 .setStatus(toProtoStatus(status))
                 .addAllItems(items.stream()

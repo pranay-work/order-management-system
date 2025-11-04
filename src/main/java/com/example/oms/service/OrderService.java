@@ -20,8 +20,8 @@ public class OrderService {
         this.orderRepository = orderRepository;
     }
 
-    public Order createOrder(String customerName, List<OrderItem> items) {
-        Order order = new Order(UUID.randomUUID(), customerName, Instant.now(), OrderStatus.PENDING, items);
+    public Order createOrder(UUID customerId, List<OrderItem> items) {
+        Order order = new Order(UUID.randomUUID(), customerId, Instant.now(), OrderStatus.PENDING, items);
         return orderRepository.save(order);
     }
 

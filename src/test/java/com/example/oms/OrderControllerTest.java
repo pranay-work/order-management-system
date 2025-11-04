@@ -34,7 +34,7 @@ public class OrderControllerTest {
     @Test
     void createGetListAndCancelFlow() {
         CreateOrderRequest req = new CreateOrderRequest();
-        req.setCustomerName("Alice");
+        req.setCustomerId(UUID.randomUUID().toString());
         OrderItemRequest item = new OrderItemRequest();
         item.setProductId("P1");
         item.setQuantity(2);
@@ -60,7 +60,7 @@ public class OrderControllerTest {
     @Test
     void updateStatusEndpoint() {
         CreateOrderRequest req = new CreateOrderRequest();
-        req.setCustomerName("Bob");
+        req.setCustomerId(UUID.randomUUID().toString());
         OrderItemRequest item = new OrderItemRequest();
         item.setProductId("P2");
         item.setQuantity(1);
@@ -87,7 +87,7 @@ public class OrderControllerTest {
     @Test
     void cancelNonPendingShouldFail() {
         CreateOrderRequest req = new CreateOrderRequest();
-        req.setCustomerName("Carl");
+        req.setCustomerId(UUID.randomUUID().toString());
         OrderItemRequest item = new OrderItemRequest();
         item.setProductId("P3");
         item.setQuantity(1);

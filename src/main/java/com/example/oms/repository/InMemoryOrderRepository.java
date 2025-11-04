@@ -49,7 +49,7 @@ public class InMemoryOrderRepository implements OrderRepository {
 
     private Order copyOf(Order order) {
         List<OrderItem> itemsCopy = new ArrayList<>(order.getItems());
-        return new Order(order.getId(), order.getCustomerName(), order.getCreatedAt(), order.getStatus(), itemsCopy);
+        return new Order(order.getId(), order.getCustomerId(), order.getCreatedAt(), order.getStatus(), itemsCopy);
     }
 }
 

@@ -32,7 +32,8 @@ public class OrderController {
         List<OrderItem> items = request.getItems().stream()
                 .map(OrderController::toModel)
                 .toList();
-        Order created = orderService.createOrder(request.getCustomerName(), items);
+        UUID customerId = UUID.fromString(request.getCustomerId());
+        Order created = orderService.createOrder(customerId, items);
         // todo
         return ResponseEntity.created(URI.create("/api/orders/" + created.getId()))
                 .body(OrderResponse.from(created));

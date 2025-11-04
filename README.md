@@ -23,7 +23,7 @@ gRPC server starts at localhost:9090
 curl -sS -X POST http://localhost:8080/api/orders \
   -H 'Content-Type: application/json' \
   -d '{
-    "customerName":"Alice",
+    "customerId":"550e8400-e29b-41d4-a716-446655440000",
     "items":[{"productId":"P1","quantity":2},{"productId":"P2","quantity":1}]
   }'
 ```
@@ -64,7 +64,7 @@ Proto file: `src/main/proto/order.proto`
 - Create order
 ```bash
 grpcurl -plaintext -d '{
-  "customer_name":"Alice",
+  "customer_id":"550e8400-e29b-41d4-a716-446655440000",
   "items":[{"product_id":"P1","quantity":2}]
 }' localhost:9090 com.example.oms.grpc.OrderService/CreateOrder
 ```

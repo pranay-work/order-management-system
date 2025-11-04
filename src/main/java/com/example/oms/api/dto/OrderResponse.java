@@ -10,7 +10,7 @@ import java.util.UUID;
 
 public class OrderResponse {
     private UUID id;
-    private String customerName;
+    private UUID customerId;
     private Instant createdAt;
     private OrderStatus status;
     private List<OrderItem> items;
@@ -18,7 +18,7 @@ public class OrderResponse {
     public static OrderResponse from(Order order) {
         OrderResponse r = new OrderResponse();
         r.id = order.getId();
-        r.customerName = order.getCustomerName();
+        r.customerId = order.getCustomerId();
         r.createdAt = order.getCreatedAt();
         r.status = order.getStatus();
         r.items = order.getItems();
@@ -29,8 +29,8 @@ public class OrderResponse {
         return id;
     }
 
-    public String getCustomerName() {
-        return customerName;
+    public UUID getCustomerId() {
+        return customerId;
     }
 
     public Instant getCreatedAt() {

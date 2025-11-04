@@ -24,14 +24,14 @@ message OrderItem {
 
 message Order {
   string id = 1;
-  string customer_name = 2;
+  string customer_id = 2;
   google.protobuf.Timestamp created_at = 3;
   OrderStatus status = 4;
   repeated OrderItem items = 5;
 }
 
 message CreateOrderRequest {
-  string customer_name = 1;
+  string customer_id = 1;
   repeated OrderItem items = 2;
 }
 
