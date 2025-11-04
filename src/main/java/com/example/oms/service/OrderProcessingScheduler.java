@@ -16,9 +16,7 @@ public class OrderProcessingScheduler {
         this.orderService = orderService;
     }
 
-    // Run every 5 minutes
-    // todo make it configurable
-    @Scheduled(fixedRate = 5 * 60 * 1000)
+    @Scheduled(fixedRateString = "${order.scheduler.interval-ms:300000}")
     public void transitionPendingToProcessing() {
         int updated = orderService.processPendingOrders();
         if (updated > 0) {
