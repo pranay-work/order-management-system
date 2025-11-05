@@ -30,7 +30,9 @@ Got the code review done by windsurf. Below are the issues reported and fixed by
     - Added
 
 - Use separate DTOs for API and domain models
-    - Fixed
+    - Fixed. This took considerable time as it could not figure out OrderStatus of API and domain model.
 
 - Implement Circuit breaker and bulk head
     - TBD
+
+- There were errors related to flyway migration and column entity mapping where multiple iterations are required to fix the issue
