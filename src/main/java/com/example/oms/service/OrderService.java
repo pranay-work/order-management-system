@@ -111,11 +111,16 @@ public class OrderService {
      * @param direction Sort direction (ASC/DESC)
      * @return Page of orders with the specified status
      */
-    public Page<Order> findByStatus(OrderStatus status, int page, int size, String sortBy, String direction) {
+    public Page<Order> listOrders(OrderStatus status, int page, int size, String sortBy, String direction) {
         Sort.Direction sortDirection = "ASC".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
         String sortField = sortBy == null || sortBy.trim().isEmpty() ? "createdAt" : sortBy;
         Pageable pageable = PageRequest.of(page, size, sortDirection, sortField);
-        return orderRepository.findByStatus(status, pageable);
+        
+        if (status != null) {
+            return orderRepository.findByStatus(status, pageable);
+        } else {
+            return orderRepository.findAll(pageable);
+        }
     }
     
     /**
@@ -127,7 +132,7 @@ public class OrderService {
      * @deprecated Use listOrders with pagination parameters instead
      */
     @Deprecated
-    public List<Order> listOrders(OrderStatus status) {
+    public List<Order> listOrders(com.example.oms.model.OrderStatus status) {
         return status != null 
             ? orderRepository.findByStatus(status, Pageable.unpaged()).getContent()
             : orderRepository.findAll(Pageable.unpaged()).getContent();
@@ -173,11 +178,10 @@ public class OrderService {
      */
     @Transactional
     public boolean deleteOrder(UUID id) {
-        if (orderRepository.existsById(id)) {
-            orderRepository.deleteById(id);
+        return orderRepository.findById(id).map(order -> {
+            orderRepository.delete(order);
             return true;
-        }
-        return false;
+        }).orElse(false);
     }
     
     /**
@@ -214,7 +218,7 @@ public class OrderService {
 
     public static class OrderNotFoundException extends RuntimeException {
         public OrderNotFoundException(UUID id) {
-            super("Order not found: " + id);
+            super("Order not found with id: " + id);
         }
     }
 

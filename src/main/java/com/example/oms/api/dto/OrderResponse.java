@@ -1,9 +1,7 @@
 package com.example.oms.api.dto;
 
 import com.example.oms.model.Order;
-import com.example.oms.model.OrderItem;
 import com.example.oms.model.OrderStatus;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -86,27 +84,23 @@ public class OrderResponse {
 
     // Static factory method
     public static OrderResponse from(Order order) {
+        if (order == null) {
+            return null;
+        }
+        
         OrderResponse response = new OrderResponse();
         response.setId(order.getId());
         response.setCustomerId(order.getCustomerId());
         response.setCreatedAt(order.getCreatedAt());
+        response.setUpdatedAt(order.getUpdatedAt());
         response.setStatus(order.getStatus());
+        response.setCreatedBy(order.getCreatedBy());
+        response.setUpdatedBy(order.getUpdatedBy());
         
-        // Map OrderItems to OrderItemResponses
         if (order.getItems() != null) {
-            List<OrderItemResponse> itemResponses = order.getItems().stream()
-                .map(item -> {
-                    OrderItemResponse itemResponse = new OrderItemResponse();
-                    itemResponse.setId(item.getId());
-                    itemResponse.setProductId(item.getProductId());
-                    itemResponse.setProductName(item.getProductName());
-                    itemResponse.setQuantity(item.getQuantity());
-                    itemResponse.setUnitPrice(item.getUnitPrice());
-                    itemResponse.setTotalPrice(item.getTotalPrice());
-                    return itemResponse;
-                })
-                .collect(Collectors.toList());
-            response.setItems(itemResponses);
+            response.setItems(order.getItems().stream()
+                .map(item -> OrderItemResponse.from(item))
+                .collect(Collectors.toList()));
         }
         
         return response;

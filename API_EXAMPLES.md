@@ -25,12 +25,10 @@ curl -X POST http://localhost:8080/api/orders \
     "customerId": "550e8400-e29b-41d4-a716-446655440000",
     "items": [
       {
-        "productId": "PROD-001",
-        "quantity": 5
-      },
-      {
-        "productId": "PROD-002",
-        "quantity": 3
+        "productId": "123e4567-e89b-12d3-a456-426614174000",
+        "productName": "Test Product",
+        "quantity": 2,
+        "unitPrice": 19.99
       }
     ]
   }'
@@ -39,37 +37,52 @@ curl -X POST http://localhost:8080/api/orders \
 **Response:**
 ```json
 {
-  "id": "9fede852-2efb-40f6-8d58-c392dbbb2496",
+  "id": "61c6e277-d97a-4a09-82ac-6a7c5fd45721",
   "customerId": "550e8400-e29b-41d4-a716-446655440000",
-  "createdAt": "2025-11-04T23:47:57.717254Z",
+  "createdAt": "2025-11-05T01:55:42.194415Z",
+  "updatedAt": "2025-11-05T01:55:42.194415Z",
   "status": "PENDING",
   "items": [
     {
-      "productId": "PROD-001",
-      "quantity": 5
-    },
-    {
-      "productId": "PROD-002",
-      "quantity": 3
+      "id": "c81e728d-9d4c-3f63-af06-7f89cc14862c",
+      "productId": "123e4567-e89b-12d3-a456-426614174000",
+      "productName": "Test Product",
+      "quantity": 2,
+      "unitPrice": 19.99,
+      "totalPrice": 39.98
     }
-  ]
+  ],
+  "createdBy": null,
+  "updatedBy": null
 }
 ```
 
 ## 2. Get Order by ID (GET)
 
 ```bash
-curl http://localhost:8080/api/orders/9fede852-2efb-40f6-8d58-c392dbbb2496
+curl http://localhost:8080/api/orders/61c6e277-d97a-4a09-82ac-6a7c5fd45721
 ```
 
 **Response:**
 ```json
 {
-  "id": "9fede852-2efb-40f6-8d58-c392dbbb2496",
+  "id": "61c6e277-d97a-4a09-82ac-6a7c5fd45721",
   "customerId": "550e8400-e29b-41d4-a716-446655440000",
-  "createdAt": "2025-11-04T23:47:57.717254Z",
+  "createdAt": "2025-11-05T01:55:42.194415Z",
+  "updatedAt": "2025-11-05T01:55:42.194415Z",
   "status": "PENDING",
-  "items": [...]
+  "items": [
+    {
+      "id": "c81e728d-9d4c-3f63-af06-7f89cc14862c",
+      "productId": "123e4567-e89b-12d3-a456-426614174000",
+      "productName": "Test Product",
+      "quantity": 2,
+      "unitPrice": 19.99,
+      "totalPrice": 39.98
+    }
+  ],
+  "createdBy": null,
+  "updatedBy": null
 }
 ```
 
@@ -79,25 +92,96 @@ curl http://localhost:8080/api/orders/9fede852-2efb-40f6-8d58-c392dbbb2496
 curl http://localhost:8080/api/orders
 ```
 
-## 4. List Orders by Status (GET with query parameter)
-
-```bash
-# Get all PENDING orders
-curl http://localhost:8080/api/orders?status=PENDING
-
-# Get all PROCESSING orders
-curl http://localhost:8080/api/orders?status=PROCESSING
-
-# Get all SHIPPED orders
-curl http://localhost:8080/api/orders?status=SHIPPED
-
-# Get all DELIVERED orders
-curl http://localhost:8080/api/orders?status=DELIVERED
+**Response (Paginated):**
+```json
+{
+  "content": [
+    {
+      "id": "f1d0f5d8-07ff-4163-a9ba-b24569a29b9d",
+      "customerId": "550e8400-e29b-41d4-a716-446655440003",
+      "createdAt": "2025-11-05T02:00:26.145033Z",
+      "updatedAt": "2025-11-05T02:00:26.145033Z",
+      "status": "CANCELLED",
+      "items": [
+        {
+          "id": "1679091c-5a88-3faf-afb5-e6087eb1b2dc",
+          "productId": "123e4567-e89b-12d3-a456-426614174003",
+          "productName": "gRPC Test Product",
+          "quantity": 5,
+          "unitPrice": 15.99,
+          "totalPrice": 79.95
+        }
+      ],
+      "createdBy": null,
+      "updatedBy": null
+    }
+  ],
+  "page": 0,
+  "size": 10,
+  "first": true,
+  "last": true,
+  "total_elements": 1,
+  "total_pages": 1
+}
 ```
 
-**Valid status values:** `PENDING`, `PROCESSING`, `SHIPPED`, `DELIVERED`, `CANCELLED`
+## 4. Update Order Status (PATCH)
 
-## 5. Update Order Status (PUT/PATCH)
+```bash
+curl -X PATCH http://localhost:8080/api/orders/61c6e277-d97a-4a09-82ac-6a7c5fd45721/status \
+  -H 'Content-Type: application/json' \
+  -d '{"status":"PROCESSING"}'
+```
+
+## 5. Cancel Order (POST)
+
+```bash
+curl -X POST http://localhost:8080/api/orders/61c6e277-d97a-4a09-82ac-6a7c5fd45721/cancel
+```
+
+## gRPC API Examples
+
+### 1. Create Order
+
+```bash
+grpcurl -plaintext -d '{
+  "customer_id":"550e8400-e29b-41d4-a716-446655440003", 
+  "items":[{"product_id":"123e4567-e89b-12d3-a456-426614174003", "quantity":5}]
+}' localhost:9090 com.example.oms.grpc.OrderService/CreateOrder
+```
+
+### 2. Get Order by ID
+
+```bash
+grpcurl -plaintext -d '{"id":"f1d0f5d8-07ff-4163-a9ba-b24569a29b9d"}' \
+  localhost:9090 com.example.oms.grpc.OrderService/GetOrder
+```
+
+### 3. List Orders
+
+```bash
+# List all orders
+grpcurl -plaintext -d '{}' localhost:9090 com.example.oms.grpc.OrderService/ListOrders
+
+# Filter by status
+grpcurl -plaintext -d '{"status":"PENDING"}' localhost:9090 com.example.oms.grpc.OrderService/ListOrders
+```
+
+### 4. Update Order Status
+
+```bash
+grpcurl -plaintext -d '{"id":"f1d0f5d8-07ff-4163-a9ba-b24569a29b9d", "status":"CANCELLED"}' \
+  localhost:9090 com.example.oms.grpc.OrderService/UpdateOrderStatus
+```
+
+### 5. Cancel Order
+
+```bash
+grpcurl -plaintext -d '{"id":"f1d0f5d8-07ff-4163-a9ba-b24569a29b9d"}' \
+  localhost:9090 com.example.oms.grpc.OrderService/CancelOrder
+```
+
+**Note:** The gRPC API uses snake_case for field names, while the REST API uses camelCase.
 
 ```bash
 curl -X PUT http://localhost:8080/api/orders/9fede852-2efb-40f6-8d58-c392dbbb2496/status \

@@ -41,6 +41,14 @@ public class MySqlOrderRepository implements OrderRepository {
     }
 
     @Override
+    @Transactional
+    public void delete(Order order) {
+        if (order != null && order.getId() != null) {
+            jpaOrderRepository.deleteById(order.getId());
+        }
+    }
+
+    @Override
     public Optional<Order> findById(UUID id) {
         return jpaOrderRepository.findById(id)
                 .map(this::toDomain);
@@ -85,7 +93,18 @@ public class MySqlOrderRepository implements OrderRepository {
         
         List<OrderItem> items = entity.getItems() != null ? 
             entity.getItems().stream()
-                .map(item -> new OrderItem(item.getProductId(), item.getQuantity()))
+                .map(item -> {
+                    OrderItem orderItem = new OrderItem();
+                    // Convert Long itemId to UUID if needed, or use null if itemId is null
+                    if (item.getItemId() != null) {
+                        orderItem.setId(UUID.nameUUIDFromBytes(item.getItemId().toString().getBytes()));
+                    }
+                    orderItem.setProductId(item.getProductId());
+                    orderItem.setProductName(item.getProductName() != null ? item.getProductName() : "");
+                    orderItem.setQuantity(item.getQuantity());
+                    orderItem.setUnitPrice(item.getUnitPrice());
+                    return orderItem;
+                })
                 .collect(Collectors.toList()) : 
             List.of();
 

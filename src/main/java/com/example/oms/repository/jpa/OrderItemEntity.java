@@ -1,12 +1,15 @@
 package com.example.oms.repository.jpa;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
@@ -19,6 +22,7 @@ public class OrderItemEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false, columnDefinition = "BINARY(16)")
+    @JdbcTypeCode(SqlTypes.VARBINARY)
     private OrderEntity order;
 
     @Column(name = "product_id", nullable = false, length = 255)
@@ -26,6 +30,23 @@ public class OrderItemEntity {
 
     @Column(nullable = false)
     private int quantity;
+    
+    @Column(name = "product_name")
+    private String productName;
+    
+    @Column(name = "unit_price", precision = 10, scale = 2)
+    private BigDecimal unitPrice;
+    
+    @Column(name = "total_price", precision = 10, scale = 2)
+    private BigDecimal totalPrice;
+    
+    @PrePersist
+    @PreUpdate
+    protected void calculateTotal() {
+        if (unitPrice != null && quantity > 0) {
+            this.totalPrice = unitPrice.multiply(BigDecimal.valueOf(quantity));
+        }
+    }
 
     @CreatedDate
     @Column(name = "created_date", nullable = false, updatable = false)
@@ -65,6 +86,31 @@ public class OrderItemEntity {
 
     public void setOrder(OrderEntity order) {
         this.order = order;
+    }
+    
+    public String getProductName() {
+        return productName;
+    }
+    
+    public void setProductName(String productName) {
+        this.productName = productName;
+    }
+    
+    public BigDecimal getUnitPrice() {
+        return unitPrice;
+    }
+    
+    public void setUnitPrice(BigDecimal unitPrice) {
+        this.unitPrice = unitPrice;
+        calculateTotal();
+    }
+    
+    public BigDecimal getTotalPrice() {
+        return totalPrice;
+    }
+    
+    public void setTotalPrice(BigDecimal totalPrice) {
+        this.totalPrice = totalPrice;
     }
 
     public String getProductId() {

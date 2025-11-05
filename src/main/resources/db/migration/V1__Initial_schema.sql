@@ -8,7 +8,10 @@ CREATE TABLE IF NOT EXISTS orders (
     created_by VARCHAR(100) NOT NULL,
     updated_date TIMESTAMP NOT NULL,
     updated_by VARCHAR(100) NOT NULL,
-    version BIGINT DEFAULT 0 NOT NULL
+    version BIGINT DEFAULT 0 NOT NULL,
+    INDEX idx_orders_customer_id (customer_id),
+    INDEX idx_orders_status (status),
+    INDEX idx_orders_created_at (created_at)
 ) ENGINE=InnoDB;
 
 -- Create order_items table with indexes
@@ -17,15 +20,7 @@ CREATE TABLE IF NOT EXISTS order_items (
     order_id BINARY(16) NOT NULL,
     product_id VARCHAR(36) NOT NULL,
     quantity INT NOT NULL,
-    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    INDEX idx_order_items_order_id (order_id),
+    INDEX idx_order_items_product_id (product_id)
 ) ENGINE=InnoDB;
-
--- Add indexes for performance
-CREATE INDEX idx_orders_customer_id ON orders(customer_id);
-CREATE INDEX idx_orders_status ON orders(status);
-CREATE INDEX idx_orders_created_at ON orders(created_at);
-CREATE INDEX idx_order_items_order_id ON order_items(order_id);
-CREATE INDEX idx_order_items_product_id ON order_items(product_id);
-
--- Add version column for optimistic locking
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS version BIGINT DEFAULT 0 NOT NULL;

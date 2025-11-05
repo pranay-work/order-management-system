@@ -1,0 +1,36 @@
+Used cursor, for initial project setup. Below are the key changes and fixed by cursor.
+
+- It used customer name for order creation. Issues with this approach:
+    - Not unique: multiple customers can share a name
+    - No customer identification: can't track a customer's order history
+    - Not scalable: can't query orders by customer efficiently
+    - No customer entity: no profile or relationship
+
+- Used HTTP by default without confirmation, for better performance used GRPC
+
+- Used InMemory by default, updated it to Database backed
+
+- Did not have audit columns in entities for MySQL. Got it added by prompts
+
+Got the code review done by windsurf. Below are the issues reported and fixed by windsurf
+
+- No indexes.
+    - DB migration script added for creating indexes with flyway migration
+
+- No connection pooling and batch processing support.
+    - Added.
+
+- Pagination
+    - Added
+
+- N+1 Query Issue
+    - Fixed
+
+- Input validations & global exception handler
+    - Added
+
+- Use separate DTOs for API and domain models
+    - Fixed
+
+- Implement Circuit breaker and bulk head
+    - TBD

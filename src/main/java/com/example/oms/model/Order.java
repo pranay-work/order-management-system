@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 public class Order {
@@ -28,6 +29,20 @@ public class Order {
         this.totalAmount = BigDecimal.ZERO;
     }
 
+    // Constructor for simplified in-memory repository
+    public Order(UUID id, UUID customerId, Instant createdAt, OrderStatus status, List<OrderItem> items) {
+        this.id = id;
+        this.customerId = customerId;
+        this.createdAt = createdAt != null ? createdAt : Instant.now();
+        this.updatedAt = this.createdAt;
+        this.status = status != null ? status : OrderStatus.PENDING;
+        this.items = items != null ? new ArrayList<>(items) : new ArrayList<>();
+        this.totalAmount = calculateTotalAmount(this.items);
+        
+        // Set order reference in items
+        this.items.forEach(item -> item.setOrder(this));
+    }
+    
     public Order(UUID id, UUID customerId, String customerName, String shippingAddress, 
                 String createdBy, Instant createdAt, Instant updatedAt, 
                 OrderStatus status, BigDecimal totalAmount, List<OrderItem> items) {
@@ -161,9 +176,13 @@ public class Order {
         }
     }
 
-    public enum OrderStatus {
-        PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED
+    private BigDecimal calculateTotalAmount(List<OrderItem> items) {
+        if (items == null || items.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        return items.stream()
+            .map(OrderItem::getTotalPrice)
+            .filter(Objects::nonNull)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }
-
-

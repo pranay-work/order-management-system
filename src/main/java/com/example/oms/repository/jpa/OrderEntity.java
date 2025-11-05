@@ -21,6 +21,19 @@ public class OrderEntity {
     @Id
     @Column(columnDefinition = "BINARY(16)")
     private UUID id;
+    
+    @PrePersist
+    protected void onCreate() {
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
+        if (createdAt == null) {
+            createdAt = Instant.now();
+        }
+        if (status == null) {
+            status = OrderStatus.PENDING;
+        }
+    }
 
     @Column(name = "customer_id", nullable = false, columnDefinition = "BINARY(16)")
     private UUID customerId;

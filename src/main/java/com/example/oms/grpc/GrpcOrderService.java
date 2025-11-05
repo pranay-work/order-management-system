@@ -1,17 +1,22 @@
 package com.example.oms.grpc;
 
+import com.example.oms.model.Order;
 import com.example.oms.model.OrderItem;
 import com.example.oms.model.OrderStatus;
 import com.example.oms.service.OrderService;
+import com.example.oms.exception.OrderNotFoundException;
 import com.google.protobuf.Timestamp;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.math.BigDecimal;
+import org.springframework.data.domain.Page;
 
 @Component
 public class GrpcOrderService extends OrderServiceGrpc.OrderServiceImplBase {
@@ -23,14 +28,28 @@ public class GrpcOrderService extends OrderServiceGrpc.OrderServiceImplBase {
     }
 
     @Override
-    public void createOrder(CreateOrderRequest request, StreamObserver<Order> responseObserver) {
+    public void createOrder(CreateOrderRequest request, StreamObserver<com.example.oms.grpc.Order> responseObserver) {
         try {
-            List<OrderItem> items = request.getItemsList().stream()
-                    .map(i -> new OrderItem(i.getProductId(), i.getQuantity()))
-                    .toList();
-            UUID customerId = parseUuid(request.getCustomerId());
-            var created = orderService.createOrder(customerId, items);
-            responseObserver.onNext(toProto(created.getId().toString(), created.getCustomerId().toString(), created.getCreatedAt(), created.getStatus(), created.getItems()));
+            Order order = new Order();
+            order.setCustomerId(UUID.fromString(request.getCustomerId()));
+            order.setStatus(OrderStatus.PENDING);
+            
+            // Convert gRPC OrderItems to domain OrderItems
+            List<OrderItem> orderItems = new ArrayList<>();
+            for (com.example.oms.grpc.OrderItem item : request.getItemsList()) {
+                OrderItem orderItem = new OrderItem(
+                    item.getProductId(),
+                    "", // productName is not in the gRPC message
+                    item.getQuantity(),
+                    BigDecimal.ZERO // unitPrice is not in the gRPC message
+                );
+                orderItems.add(orderItem);
+            }
+            order.setItems(orderItems);
+            
+            Order savedOrder = orderService.createOrder(order);
+
+            responseObserver.onNext(toProto(savedOrder));
             responseObserver.onCompleted();
         } catch (IllegalArgumentException e) {
             responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("Invalid customer UUID").asRuntimeException());
@@ -40,16 +59,20 @@ public class GrpcOrderService extends OrderServiceGrpc.OrderServiceImplBase {
     }
 
     @Override
-    public void getOrder(OrderId request, StreamObserver<Order> responseObserver) {
+    public void getOrder(OrderId request, StreamObserver<com.example.oms.grpc.Order> responseObserver) {
         try {
             UUID id = parseUuid(request.getId());
-            var order = orderService.getOrder(id);
-            responseObserver.onNext(toProto(order.getId().toString(), order.getCustomerId().toString(), order.getCreatedAt(), order.getStatus(), order.getItems()));
-            responseObserver.onCompleted();
+            Optional<Order> order = orderService.getOrder(id);
+            if (order.isPresent()) {
+                responseObserver.onNext(toProto(order.get()));
+                responseObserver.onCompleted();
+            } else {
+                responseObserver.onError(Status.NOT_FOUND
+                        .withDescription("Order not found with id: " + request.getId())
+                        .asRuntimeException());
+            }
         } catch (IllegalArgumentException e) {
             responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("Invalid UUID").asRuntimeException());
-        } catch (OrderService.OrderNotFoundException e) {
-            responseObserver.onError(Status.NOT_FOUND.withDescription(e.getMessage()).asRuntimeException());
         } catch (Exception e) {
             responseObserver.onError(Status.INTERNAL.withDescription("Failed to get order").withCause(e).asRuntimeException());
         }
@@ -58,28 +81,46 @@ public class GrpcOrderService extends OrderServiceGrpc.OrderServiceImplBase {
     @Override
     public void listOrders(ListOrdersRequest request, StreamObserver<ListOrdersResponse> responseObserver) {
         try {
-            Optional<OrderStatus> status = request.getStatus() == com.example.oms.grpc.OrderStatus.ORDER_STATUS_UNSPECIFIED
-                    ? Optional.empty()
-                    : Optional.of(fromProtoStatus(request.getStatus()));
-            var orders = orderService.listOrders(status);
+            // Get orders based on status filter
+            List<Order> orders;
+            if (request.getStatus() != com.example.oms.grpc.OrderStatus.ORDER_STATUS_UNSPECIFIED) {
+                OrderStatus status = OrderStatus.valueOf(request.getStatus().name());
+                // Use paginated version with default page size
+                Page<Order> page = orderService.listOrders(status, 0, 100, "createdAt", "desc");
+                orders = page.getContent();
+            } else {
+                // Get all orders if no status filter is specified, with default pagination
+                Page<Order> page = orderService.listOrders(0, 100, "createdAt", "desc");
+                orders = page.getContent();
+            }
+            
+            // Convert to proto orders
+            List<com.example.oms.grpc.Order> protoOrders = orders.stream()
+                    .map(this::toProto)
+                    .toList();
+                    
+            // Create response with orders (pagination info not available with current implementation)
             ListOrdersResponse resp = ListOrdersResponse.newBuilder()
-                    .addAllOrders(orders.stream()
-                            .map(o -> toProto(o.getId().toString(), o.getCustomerId().toString(), o.getCreatedAt(), o.getStatus(), o.getItems()))
-                            .toList())
+                    .addAllOrders(protoOrders)
                     .build();
+                    
             responseObserver.onNext(resp);
             responseObserver.onCompleted();
         } catch (Exception e) {
-            responseObserver.onError(Status.INTERNAL.withDescription("Failed to list orders").withCause(e).asRuntimeException());
+            responseObserver.onError(Status.INTERNAL
+                    .withDescription("Failed to list orders: " + e.getMessage())
+                    .withCause(e)
+                    .asRuntimeException());
         }
     }
 
     @Override
-    public void updateOrderStatus(UpdateOrderStatusRequest request, StreamObserver<Order> responseObserver) {
+    public void updateOrderStatus(UpdateOrderStatusRequest request, StreamObserver<com.example.oms.grpc.Order> responseObserver) {
         try {
             UUID id = parseUuid(request.getId());
-            var updated = orderService.updateOrderStatus(id, fromProtoStatus(request.getStatus()));
-            responseObserver.onNext(toProto(updated.getId().toString(), updated.getCustomerId().toString(), updated.getCreatedAt(), updated.getStatus(), updated.getItems()));
+            var updated = orderService.updateOrderStatus(id, fromProtoStatus(request.getStatus()))
+                    .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + id));
+            responseObserver.onNext(toProto(updated));
             responseObserver.onCompleted();
         } catch (IllegalArgumentException e) {
             responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("Invalid UUID").asRuntimeException());
@@ -93,11 +134,12 @@ public class GrpcOrderService extends OrderServiceGrpc.OrderServiceImplBase {
     }
 
     @Override
-    public void cancelOrder(OrderId request, StreamObserver<Order> responseObserver) {
+    public void cancelOrder(OrderId request, StreamObserver<com.example.oms.grpc.Order> responseObserver) {
         try {
             UUID id = parseUuid(request.getId());
-            var cancelled = orderService.cancelOrder(id);
-            responseObserver.onNext(toProto(cancelled.getId().toString(), cancelled.getCustomerId().toString(), cancelled.getCreatedAt(), cancelled.getStatus(), cancelled.getItems()));
+            var cancelled = orderService.cancelOrder(id)
+                    .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + id));
+            responseObserver.onNext(toProto(cancelled));
             responseObserver.onCompleted();
         } catch (IllegalArgumentException e) {
             responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("Invalid UUID").asRuntimeException());
@@ -114,22 +156,36 @@ public class GrpcOrderService extends OrderServiceGrpc.OrderServiceImplBase {
         return UUID.fromString(id);
     }
 
-    private static Order toProto(String id, String customerId, Instant createdAt, OrderStatus status, List<OrderItem> items) {
-        return Order.newBuilder()
+    private com.example.oms.grpc.Order toProto(Order order) {
+        return toProto(
+            order.getId().toString(),
+            order.getCustomerId().toString(),
+            order.getCreatedAt(),
+            order.getStatus(),
+            order.getItems()
+        );
+    }
+
+    private com.example.oms.grpc.Order toProto(String id, String customerId, Instant createdAt, OrderStatus status, List<OrderItem> items) {
+        com.example.oms.grpc.Order.Builder builder = com.example.oms.grpc.Order.newBuilder()
                 .setId(id)
                 .setCustomerId(customerId)
                 .setCreatedAt(Timestamp.newBuilder().setSeconds(createdAt.getEpochSecond()).setNanos(createdAt.getNano()).build())
-                .setStatus(toProtoStatus(status))
-                .addAllItems(items.stream()
-                        .map(i -> com.example.oms.grpc.OrderItem.newBuilder()
-                                .setProductId(i.getProductId())
-                                .setQuantity(i.getQuantity())
-                                .build())
-                        .toList())
-                .build();
+                .setStatus(toProtoStatus(status));
+                
+        if (items != null) {
+            for (OrderItem item : items) {
+                builder.addItems(com.example.oms.grpc.OrderItem.newBuilder()
+                    .setProductId(item.getProductId())
+                    .setQuantity(item.getQuantity())
+                    .build());
+            }
+        }
+        
+        return builder.build();
     }
 
-    private static com.example.oms.grpc.OrderStatus toProtoStatus(OrderStatus status) {
+    private com.example.oms.grpc.OrderStatus toProtoStatus(OrderStatus status) {
         return switch (status) {
             case PENDING -> com.example.oms.grpc.OrderStatus.PENDING;
             case PROCESSING -> com.example.oms.grpc.OrderStatus.PROCESSING;

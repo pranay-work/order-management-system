@@ -11,10 +11,6 @@ import com.example.oms.model.OrderStatus;
 import com.example.oms.service.OrderService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -57,39 +53,9 @@ public class OrderController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "DESC") String direction) {
-                
-        Pageable pageable = PageRequest.of(
-            page, 
-            size, 
-            Sort.Direction.fromString(direction), 
-            sortBy
-        );
-        
-        Page<Order> orderPage = status == null 
-            ? orderService.listOrders(pageable) 
-            : orderService.findByStatus(status, pageable);
-            
-        List<OrderResponse> orderResponses = orderPage.getContent().stream()
-            .map(OrderResponse::from)
-            .collect(Collectors.toList());
-            
-        PaginatedResponse<OrderResponse> response = new PaginatedResponse<>(
-            orderResponses,
-            orderPage.getNumber(),
-            orderPage.getSize(),
-            orderPage.getTotalElements(),
-            orderPage.getTotalPages()
-        );
-        
-        return ResponseEntity.ok(response);
-    }
-            @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", defaultValue = "20") int size,
-            @RequestParam(value = "sortBy", defaultValue = "createdAt") String sortBy,
-            @RequestParam(value = "direction", defaultValue = "DESC") String direction) {
         
         Page<Order> orderPage = orderService.listOrders(
-            Optional.ofNullable(status), 
+            status,
             page, 
             size, 
             sortBy, 
@@ -97,9 +63,9 @@ public class OrderController {
         );
         
         List<OrderResponse> content = orderPage.getContent().stream()
-                .map(OrderResponse::from)
-                .toList();
-                
+            .map(OrderResponse::from)
+            .toList();
+            
         PaginatedResponse<OrderResponse> response = new PaginatedResponse<>(
             content,
             orderPage.getNumber(),
@@ -114,13 +80,19 @@ public class OrderController {
     }
 
     @RequestMapping(path = "/{id}/status", method = {RequestMethod.PATCH, RequestMethod.PUT})
-    public OrderResponse updateStatus(@PathVariable("id") UUID id, @Valid @RequestBody UpdateOrderStatusRequest request) {
-        return OrderResponse.from(orderService.updateOrderStatus(id, request.getStatus()));
+    public ResponseEntity<OrderResponse> updateStatus(@PathVariable("id") UUID id, @Valid @RequestBody UpdateOrderStatusRequest request) {
+        return orderService.updateOrderStatus(id, request.getStatus())
+                .map(OrderResponse::from)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping("/{id}/cancel")
-    public OrderResponse cancel(@PathVariable("id") UUID id) {
-        return OrderResponse.from(orderService.cancelOrder(id));
+    public ResponseEntity<OrderResponse> cancel(@PathVariable("id") UUID id) {
+        return orderService.cancelOrder(id)
+                .map(OrderResponse::from)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     private Order toDomain(CreateOrderRequest request) {
@@ -136,11 +108,11 @@ public class OrderController {
     }
     
     private OrderItem toDomain(OrderItemRequest itemRequest) {
-        OrderItem item = new OrderItem();
-        item.setProductId(UUID.fromString(itemRequest.getProductId()));
-        item.setProductName(itemRequest.getProductName());
-        item.setQuantity(itemRequest.getQuantity());
-        item.setUnitPrice(itemRequest.getUnitPrice());
-        return item;
+        return new OrderItem(
+            itemRequest.getProductId(),
+            itemRequest.getProductName(),
+            itemRequest.getQuantity(),
+            itemRequest.getUnitPrice()
+        );
     }
 }

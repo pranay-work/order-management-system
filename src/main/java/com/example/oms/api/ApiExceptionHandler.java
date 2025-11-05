@@ -9,40 +9,68 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
 
-import java.util.HashMap;
-import java.util.Map;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
     @ExceptionHandler(OrderService.OrderNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleNotFound(RuntimeException ex) {
-        return error(HttpStatus.NOT_FOUND, ex.getMessage());
+    public ResponseEntity<ErrorResponse> handleNotFound(RuntimeException ex, WebRequest request) {
+        String path = request.getDescription(false).replace("uri=", "");
+        ErrorResponse errorResponse = ErrorResponse.of(
+            HttpStatus.NOT_FOUND, 
+            ex.getMessage(),
+            path
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(OrderService.InvalidOrderOperationException.class)
-    public ResponseEntity<ErrorResponse> handleBadRequest(RuntimeException ex) {
-        return error(HttpStatus.BAD_REQUEST, ex.getMessage());
+    public ResponseEntity<ErrorResponse> handleBadRequest(RuntimeException ex, WebRequest request) {
+        String path = request.getDescription(false).replace("uri=", "");
+        ErrorResponse errorResponse = ErrorResponse.of(
+            HttpStatus.BAD_REQUEST,
+            ex.getMessage(),
+            path
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ValidationErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
-        for (FieldError fe : ex.getBindingResult().getFieldErrors()) {
-            errors.put(fe.getField(), fe.getDefaultMessage());
-        }
-        ValidationErrorResponse response = ValidationErrorResponse.of(HttpStatus.BAD_REQUEST, "Validation failed", errors);
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    public ResponseEntity<ValidationErrorResponse> handleValidation(
+            MethodArgumentNotValidException ex, WebRequest request) {
+        
+        String path = request.getDescription(false).replace("uri=", "");
+        ValidationErrorResponse errorResponse = ValidationErrorResponse.of(
+            HttpStatus.BAD_REQUEST,
+            "Validation failed",
+            path
+        );
+        
+        ex.getBindingResult().getAllErrors().forEach(error -> {
+            String fieldName = error instanceof FieldError 
+                ? ((FieldError) error).getField() 
+                : error.getObjectName();
+            errorResponse.addValidationError(fieldName, error.getDefaultMessage());
+        });
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGeneric(Exception ex) {
-        return error(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error");
-    }
-
-    private ResponseEntity<ErrorResponse> error(HttpStatus status, String message) {
-        return new ResponseEntity<>(ErrorResponse.of(status, message), status);
+    public ResponseEntity<ErrorResponse> handleGeneric(Exception ex, WebRequest request) {
+        String path = request.getDescription(false).replace("uri=", "");
+        ErrorResponse errorResponse = ErrorResponse.of(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "An unexpected error occurred: " + ex.getMessage(),
+            path
+        );
+        
+        // Log the full exception
+        ex.printStackTrace();
+        
+        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }
 
