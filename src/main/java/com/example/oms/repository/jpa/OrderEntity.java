@@ -2,6 +2,7 @@ package com.example.oms.repository.jpa;
 
 import com.example.oms.model.OrderStatus;
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -31,7 +32,8 @@ public class OrderEntity {
     @Column(nullable = false, length = 20)
     private OrderStatus status;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @BatchSize(size = 100) // Batch fetching for N+1 protection
     private List<OrderItemEntity> items = new ArrayList<>();
 
     @CreatedDate
@@ -97,10 +99,25 @@ public class OrderEntity {
     }
 
     public void setItems(List<OrderItemEntity> items) {
-        this.items = items;
+        if (this.items == null) {
+            this.items = new ArrayList<>();
+        } else {
+            this.items.clear();
+        }
         if (items != null) {
+            this.items.addAll(items);
+            // Set the back reference
             items.forEach(item -> item.setOrder(this));
         }
+    }
+
+    // Helper method to add a single item
+    public void addItem(OrderItemEntity item) {
+        if (this.items == null) {
+            this.items = new ArrayList<>();
+        }
+        this.items.add(item);
+        item.setOrder(this);
     }
 
     public Instant getCreatedDate() {

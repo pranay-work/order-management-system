@@ -7,6 +7,11 @@ import com.example.oms.repository.OrderRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -29,8 +34,32 @@ public class OrderService {
         return orderRepository.findById(id).orElseThrow(() -> new OrderNotFoundException(id));
     }
 
+    /**
+     * List orders with pagination
+     * @param status Optional status filter
+     * @param page Page number (0-based)
+     * @param size Number of items per page
+     * @param sortBy Field to sort by (default: createdAt)
+     * @param direction Sort direction (ASC/DESC, default: DESC)
+     * @return Page of orders
+     */
+    public Page<Order> listOrders(Optional<OrderStatus> status, int page, int size, String sortBy, String direction) {
+        Sort.Direction sortDirection = "ASC".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        String sortField = sortBy == null || sortBy.trim().isEmpty() ? "createdAt" : sortBy;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortField));
+        
+        return status.map(s -> orderRepository.findByStatus(s, pageable))
+                    .orElseGet(() -> orderRepository.findAll(pageable));
+    }
+    
+    /**
+     * Backward compatible method to get all orders without pagination
+     * @deprecated Use listOrders with pagination parameters instead
+     */
+    @Deprecated
     public List<Order> listOrders(Optional<OrderStatus> status) {
-        return status.map(orderRepository::findByStatus).orElseGet(orderRepository::findAll);
+        return status.map(s -> orderRepository.findByStatus(s, Pageable.unpaged()).getContent())
+                   .orElseGet(() -> orderRepository.findAll(Pageable.unpaged()).getContent());
     }
 
     public Order updateOrderStatus(UUID id, OrderStatus newStatus) {

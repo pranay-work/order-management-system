@@ -6,7 +6,10 @@ import com.example.oms.model.OrderStatus;
 import com.example.oms.repository.jpa.OrderEntity;
 import com.example.oms.repository.jpa.OrderItemEntity;
 import com.example.oms.repository.jpa.JpaOrderRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +23,7 @@ import java.util.stream.Collectors;
         matchIfMissing = true
 )
 @org.springframework.context.annotation.Primary
+@Transactional(readOnly = true)
 public class MySqlOrderRepository implements OrderRepository {
 
     private final JpaOrderRepository jpaOrderRepository;
@@ -29,6 +33,7 @@ public class MySqlOrderRepository implements OrderRepository {
     }
 
     @Override
+    @Transactional
     public Order save(Order order) {
         OrderEntity entity = toEntity(order);
         OrderEntity saved = jpaOrderRepository.save(entity);
@@ -42,17 +47,15 @@ public class MySqlOrderRepository implements OrderRepository {
     }
 
     @Override
-    public List<Order> findAll() {
-        return jpaOrderRepository.findAll().stream()
-                .map(this::toDomain)
-                .collect(Collectors.toList());
+    public Page<Order> findAll(Pageable pageable) {
+        return jpaOrderRepository.findAllWithItems(pageable)
+                .map(this::toDomain);
     }
 
     @Override
-    public List<Order> findByStatus(OrderStatus status) {
-        return jpaOrderRepository.findByStatus(status).stream()
-                .map(this::toDomain)
-                .collect(Collectors.toList());
+    public Page<Order> findByStatus(OrderStatus status, Pageable pageable) {
+        return jpaOrderRepository.findByStatusWithItems(status, pageable)
+                .map(this::toDomain);
     }
 
     private OrderEntity toEntity(Order order) {
@@ -76,18 +79,23 @@ public class MySqlOrderRepository implements OrderRepository {
     }
 
     private Order toDomain(OrderEntity entity) {
-        List<OrderItem> items = entity.getItems().stream()
+        if (entity == null) {
+            return null;
+        }
+        
+        List<OrderItem> items = entity.getItems() != null ? 
+            entity.getItems().stream()
                 .map(item -> new OrderItem(item.getProductId(), item.getQuantity()))
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()) : 
+            List.of();
 
-        Order order = new Order(
-                entity.getId(),
-                entity.getCustomerId(),
-                entity.getCreatedAt(),
-                entity.getStatus(),
-                items
+        return new Order(
+            entity.getId(),
+            entity.getCustomerId(),
+            entity.getCreatedAt(),
+            entity.getStatus(),
+            items
         );
-        return order;
     }
 }
 

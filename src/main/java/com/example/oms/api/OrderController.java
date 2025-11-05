@@ -10,6 +10,8 @@ import com.example.oms.model.OrderStatus;
 import com.example.oms.service.OrderService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
@@ -44,10 +46,36 @@ public class OrderController {
     }
 
     @GetMapping
-    public List<OrderResponse> list(@RequestParam(value = "status", required = false) OrderStatus status) {
-        return orderService.listOrders(Optional.ofNullable(status)).stream()
+    public ResponseEntity<PaginatedResponse<OrderResponse>> list(
+            @RequestParam(value = "status", required = false) OrderStatus status,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size,
+            @RequestParam(value = "sortBy", defaultValue = "createdAt") String sortBy,
+            @RequestParam(value = "direction", defaultValue = "DESC") String direction) {
+        
+        Page<Order> orderPage = orderService.listOrders(
+            Optional.ofNullable(status), 
+            page, 
+            size, 
+            sortBy, 
+            direction
+        );
+        
+        List<OrderResponse> content = orderPage.getContent().stream()
                 .map(OrderResponse::from)
                 .toList();
+                
+        PaginatedResponse<OrderResponse> response = new PaginatedResponse<>(
+            content,
+            orderPage.getNumber(),
+            orderPage.getSize(),
+            orderPage.getTotalElements(),
+            orderPage.getTotalPages(),
+            orderPage.isFirst(),
+            orderPage.isLast()
+        );
+        
+        return ResponseEntity.ok(response);
     }
 
     @RequestMapping(path = "/{id}/status", method = {RequestMethod.PATCH, RequestMethod.PUT})
